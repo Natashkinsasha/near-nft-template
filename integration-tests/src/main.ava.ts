@@ -13,20 +13,17 @@ test.beforeEach(async (t) => {
   // deploy contract
   const root = worker.rootAccount;
 
-  // some test accounts
-  const alice = await root.createSubAccount("alice", {
-    initialBalance: NEAR.parse("30 N").toJSON(),
-  });
   const contract = await root.createSubAccount("contract", {
     initialBalance: NEAR.parse("30 N").toJSON(),
   });
 
   // Get wasm file path from package.json test script in folder above
+  console.log(process.argv);
   await contract.deploy(process.argv[2]);
 
   // Save state for test runs, it is unique for each test
   t.context.worker = worker;
-  t.context.accounts = { root, contract, alice };
+  t.context.accounts = { root, contract };
 });
 
 test.afterEach(async (t) => {
@@ -37,23 +34,13 @@ test.afterEach(async (t) => {
 });
 
 test("send one message and retrieve it", async (t) => {
-  const { root, contract } = t.context.accounts;
-  await root.call(contract, "add_message", { text: "aloha" });
-  const msgs = await contract.view("get_messages");
-  const expectedMessagesResult = [
-    { premium: false, sender: root.accountId, text: "aloha" },
-  ];
-  t.deepEqual(msgs, expectedMessagesResult);
+  const { contract } = t.context.accounts;
+  const nftMetadata = await contract.view('nft_metadata');
+  t.deepEqual(nftMetadata, {
+    spec: "nft-1.0.0",
+    name: "NFT Tutorial Contract",
+    symbol: "GOTEAM"
+  });
 });
 
-test("send two messages and expect two total", async (t) => {
-  const { root, contract, alice } = t.context.accounts;
-  await root.call(contract, "add_message", { text: "aloha" });
-  await alice.call(contract, "add_message", { text: "hola" }, { attachedDeposit: NEAR.parse('1') });
-  const msgs = await contract.view("get_messages");
-  const expected = [
-    { premium: false, sender: root.accountId, text: "aloha" },
-    { premium: true, sender: alice.accountId, text: "hola" },
-  ];
-  t.deepEqual(msgs, expected);
-});
+
