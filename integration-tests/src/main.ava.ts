@@ -17,9 +17,12 @@ test.beforeEach(async (t) => {
     initialBalance: NEAR.parse("30 N").toJSON(),
   });
 
+
   // Get wasm file path from package.json test script in folder above
   console.log(process.argv);
   await contract.deploy(process.argv[2]);
+
+  // await contract.call(contract, 'init', {});
 
   // Save state for test runs, it is unique for each test
   t.context.worker = worker;
@@ -33,7 +36,7 @@ test.afterEach(async (t) => {
   });
 });
 
-test("send one message and retrieve it", async (t) => {
+test("should return nft metadata", async (t) => {
   const { contract } = t.context.accounts;
   const nftMetadata = await contract.view('nft_metadata');
   t.deepEqual(nftMetadata, {
@@ -41,6 +44,14 @@ test("send one message and retrieve it", async (t) => {
     name: "NFT Tutorial Contract",
     symbol: "GOTEAM"
   });
+});
+
+test("should mint tokens", async (t) => {
+  const { contract } = t.context.accounts;
+  const count = 1;
+  await contract.call(contract, 'airdrop', {count}, {attachedDeposit: NEAR.parse('1 NEAR')});
+  const nftTotalSupply = await contract.view('nft_total_supply');
+  t.is(nftTotalSupply, count);
 });
 
 

@@ -2,6 +2,7 @@ import { assert, near, UnorderedSet, Vector } from "near-sdk-js";
 import { Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME } from ".";
 import { TokenInfo } from "./metadata";
 import {EventLogData} from "./nep/NEP-297";
+import {NftTransferEventLogData} from "./nep/NEP-171";
 
 // Gets a collection and deserializes it into a set that can be used.
 export function restoreOwners(collection) {
@@ -167,7 +168,7 @@ export function internalTransfer(contract: Contract, senderId: string, receiverI
     }
 
     // Default the authorized ID to be None for the logs.
-    let authorizedId;
+    let authorizedId: string | undefined;
 
     //if the approval ID was provided, set the authorized ID equal to the sender
     if (approvalId) {
@@ -175,7 +176,7 @@ export function internalTransfer(contract: Contract, senderId: string, receiverI
     }
 
     // Construct the transfer log as per the events standard.
-    const nftTransferLog: EventLogData<any> = {
+    const nftTransferLog: NftTransferEventLogData = {
         // Standard name ("nep171").
         standard: NFT_STANDARD_NAME,
         // Version of the standard ("nft-1.0.0").

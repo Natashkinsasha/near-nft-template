@@ -2,7 +2,7 @@ import { assert, near } from "near-sdk-js";
 import { Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME } from ".";
 import { internalAddTokenToOwner, refundDeposit } from "./internal";
 import {TokenInfo} from "./metadata";
-import {EventLogData} from "./nep/NEP-297";
+import {NftMintEventLogData} from "./nep/NEP-171";
 
 
 export function internalMint({
@@ -56,7 +56,7 @@ export function internalMint({
         internalAddTokenToOwner(contract, token.owner_id, tokenId)
 
         // Construct the mint log as per the events standard.
-        const nftMintLog: EventLogData<any> = {
+        const nftMintLog: NftMintEventLogData = {
             // Standard name ("nep171").
             standard: NFT_STANDARD_NAME,
             // Version of the standard ("nft-1.0.0").

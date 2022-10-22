@@ -1,8 +1,25 @@
+import {EventLogData} from "./NEP-297";
 
 export type Token = {
     token_id: string,
     owner_id: string,
 }
+
+export type NftTransferEventLogData = EventLogData<"nft_transfer", {
+    authorized_id?: string,
+    old_owner_id: string,
+    new_owner_id: string,
+    token_ids: string[],
+    memo?: string,
+}[]>
+
+export type NftMintEventLogData = EventLogData<"nft_mint", {
+    owner_id: string,
+    token_ids: string[],
+}[]>
+
+
+
 
 
 export interface NEP171{

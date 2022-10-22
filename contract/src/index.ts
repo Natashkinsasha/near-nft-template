@@ -1,5 +1,5 @@
 
-import { NearBindgen, near, call, view, LookupMap, UnorderedMap, Vector, UnorderedSet } from 'near-sdk-js'
+import {NearBindgen, near, call, view, LookupMap, UnorderedMap, Vector, UnorderedSet, initialize} from 'near-sdk-js'
 import {internalNftMetadata, JsonToken} from './metadata';
 import { internalMint } from './mint';
 import { internalNftTokens, internalSupplyForOwner, internalTokensForOwner, internalTotalSupply } from './enumeration';
@@ -12,6 +12,7 @@ import {NEP178} from "./nep/NEP-178";
 import {NEP199} from "./nep/NEP-199";
 import {NEP181} from "./nep/NEP-181";
 import {Counter} from "./lib/Counter";
+import {AccessControl} from "./lib/AccessControl";
 
 /// This spec can be treated like a version of the standard.
 export const NFT_METADATA_SPEC = "nft-1.0.0";
@@ -19,8 +20,12 @@ export const NFT_METADATA_SPEC = "nft-1.0.0";
 /// This is the name of the NFT standard we're using
 export const NFT_STANDARD_NAME = "nep171";
 
+
 @NearBindgen({})
 export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
+
+    static MINTER_ROLE = "MINTER_ROLE";
+
     tokensPerOwner: LookupMap = new LookupMap("tokensPerOwner");
     tokensById: LookupMap = new LookupMap("tokensById");
     tokenMetadataById: UnorderedMap = new UnorderedMap("tokenMetadataById");
@@ -29,11 +34,19 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
         name: "NFT Tutorial Contract",
         symbol: "GOTEAM"
     } ;
-    counter: Counter;
+    counter: Counter = new Counter();
+    accessController = new AccessControl();
+
+    // constructor() {
+    //     this.accessController.setRole(AccessControl.DEFAULT_ADMIN_ROLE, near.currentAccountId());
+    //     this.accessController.setRole(Contract.MINTER_ROLE, near.currentAccountId());
+    // }
 
 
-    @call({})
+
+    @call({payableFunction: true})
     airdrop({ receiver_id, count }: {receiver_id?: string, count: number}): void {
+        this.accessController.assertRole(Contract.MINTER_ROLE, near.predecessorAccountId());
         return internalMint({ contract: this, count, receiverId: receiver_id ?? near.predecessorAccountId() });
     }
 

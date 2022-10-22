@@ -1,9 +1,9 @@
 
 
 export class Counter{
-    private value: number;
+    private value: number = 0;
 
-    current(): number{
+    current(): number {
         return this.value;
     }
 

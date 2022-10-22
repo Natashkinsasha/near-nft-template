@@ -4,6 +4,7 @@ import { assertOneYocto, internalAddTokenToOwner, internalRemoveTokenFromOwner, 
 import { JsonToken, TokenInfo } from "./metadata";
 import {TokenMetadata} from "./nep/NEP-177";
 import {EventLogData} from "./nep/NEP-297";
+import {NftTransferEventLogData} from "./nep/NEP-171";
 
 
 const GAS_FOR_RESOLVE_TRANSFER = 40_000_000_000_000;
@@ -213,7 +214,7 @@ export function internalResolveTransfer({
     */
 
     // Construct the transfer log as per the events standard.
-    let nftTransferLog: EventLogData<any> = {
+    let nftTransferLog: NftTransferEventLogData = {
         // Standard name ("nep171").
         standard: NFT_STANDARD_NAME,
         // Version of the standard ("nft-1.0.0").
