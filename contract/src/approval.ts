@@ -1,7 +1,6 @@
 import { assert, bytes, near } from "near-sdk-js";
-import { Contract } from ".";
-import { assertAtLeastOneYocto, assertOneYocto, bytesForApprovedAccountId, internalAddTokenToOwner, refundDeposit, refundApprovedAccountIds, refundApprovedAccountIdsIter } from "./internal";
-import { TokenInfo } from "./metadata";
+import {Contract, TokenInfo} from ".";
+import { assertAtLeastOneYocto, assertOneYocto, bytesForApprovedAccountId, refundDeposit, refundApprovedAccountIds, refundApprovedAccountIdsIter } from "./internal";
 
 const GAS_FOR_NFT_ON_APPROVE = 35_000_000_000_000;
 
@@ -24,7 +23,7 @@ export function internalNftApprove({
     assertAtLeastOneYocto();
 
     //get the token object from the token ID
-    let token = contract.tokensById.get(tokenId) as TokenInfo | null;
+    const token = contract.tokensById.get(tokenId) as TokenInfo | null;
     if (!token) {
         throw new Error("no token");
     }
@@ -32,14 +31,14 @@ export function internalNftApprove({
     assert(near.predecessorAccountId() === token.owner_id, "Predecessor must be the token owner");
 
     //get the next approval ID if we need a new approval
-    let approvalId = token.next_approval_id;
+    const approvalId = token.next_approval_id;
 
     //check if the account has been approved already for this token
-    let isNewApproval = token.approved_account_ids.hasOwnProperty(accountId);
+    const isNewApproval = token.approved_account_ids.hasOwnProperty(accountId);
     token.approved_account_ids[accountId] = approvalId;
 
     //if it was a new approval, we need to calculate how much storage is being used to add the account.
-    let storageUsed = isNewApproval ? bytesForApprovedAccountId(accountId) : 0;
+    const storageUsed = isNewApproval ? bytesForApprovedAccountId(accountId) : 0;
 
     //increment the token's next approval ID by 1
     token.next_approval_id += 1;
@@ -84,13 +83,13 @@ export function internalNftIsApproved({
     approvalId?: number
 }) {
     //get the token object from the token_id
-    let token = contract.tokensById.get(tokenId) as TokenInfo | null;
+    const token = contract.tokensById.get(tokenId) as TokenInfo | null;
     if (!token) {
         throw new Error("no token");
     }
 
     //get the approval number for the passed in account ID
-    let approval = token.approved_account_ids[approvedAccountId];
+    const approval = token.approved_account_ids[approvedAccountId];
 
     //if there was no approval ID found for the account ID, we simply return false
     if (!approval) {
@@ -128,7 +127,7 @@ export function internalNftRevoke({
     }
 
     //get the caller of the function and assert that they are the owner of the token
-    let predecessorAccountId = near.predecessorAccountId();
+    const predecessorAccountId = near.predecessorAccountId();
     assert(predecessorAccountId == token.owner_id, "only token owner can revoke");
      
     //if the account ID was in the token's approval, we remove it
@@ -156,16 +155,16 @@ export function internalNftRevokeAll({
 
     //get the token object from the passed in token ID
     let token = contract.tokensById.get(tokenId) as TokenInfo | null;
-    if (!token) {
+    if (!token)   {
         throw new Error("no token");
     }
 
     //get the caller and make sure they are the owner of the tokens
-    let predecessorAccountId = near.predecessorAccountId();
+    const predecessorAccountId = near.predecessorAccountId();
     assert(predecessorAccountId == token.owner_id, "only token owner can revoke");
 
     //only revoke if the approved account IDs for the token is not empty
-    if (token.approved_account_ids && Object.keys(token.approved_account_ids).length === 0 && Object.getPrototypeOf(token.approved_account_ids) === Object.prototype) {
+    if (token.approved_account_ids && Object.keys(token.approved_account_ids).length > 0) {
         //refund the approved account IDs to the caller of the function
         refundApprovedAccountIds(predecessorAccountId, token.approved_account_ids);
         //clear the approved account IDs

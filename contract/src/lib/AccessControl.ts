@@ -12,117 +12,116 @@ export type RoleData  = {
     adminRole: string;
 }
 
-export class AccessControl {
+export interface AccessControl {
 
-    private readonly roles: LookupMap = new LookupMap('roles');
+    roles: LookupMap;
 
-    static DEFAULT_ADMIN_ROLE = 'DEFAULT_ADMIN_ROLE';
+    DEFAULT_ADMIN_ROLE: 'DEFAULT_ADMIN_ROLE';
+}
+
+export function hasRole(contract: AccessControl, role: string, account: string): boolean {
+    const roleData = contract.roles.get(role) as RoleData | null;
+    if(!roleData){
+        return false;
+    }
+    return !!roleData.members[account];
+}
 
 
-    hasRole(role: string, account: string): boolean {
-        const roleData = this.roles.get(role) as RoleData | null;
-        if(!roleData){
+export function assertRole(contract: AccessControl, role: string, account: string): void {
+    assert(hasRole(contract, role, account), `AccessControl: account ${account} is missing role ${role}`);
+}
+
+export function getRoleAdmin(contract: AccessControl, role: string): string  {
+    const roleData = contract.roles.get(role) as RoleData | null;
+    if(roleData){
+        return roleData.adminRole;
+    }
+    return contract.DEFAULT_ADMIN_ROLE;
+}
+
+
+export function grantRole(contract: AccessControl, role: string, account: string): boolean {
+    assertRole(contract, getRoleAdmin(contract, role), near.predecessorAccountId())
+    return setRole(contract, role, account);
+}
+
+export function revokeRole(contract: AccessControl, role: string, account: string): boolean {
+    assertRole(contract, getRoleAdmin(contract, role), near.predecessorAccountId())
+    return deleteRole(contract, role, account);
+}
+
+export function renounceRole(contract: AccessControl, role: string, account: string): boolean{
+    assert(account == near.predecessorAccountId(), "AccessControl: can only renounce roles for self");
+    return deleteRole(contract, role, account);
+}
+
+
+export function setRoleAdmin(contract: AccessControl, role: string, adminRole: string): boolean{
+    const previousAdminRole = getRoleAdmin(contract, role);
+    let roleData = contract.roles.get(role) as RoleData | null;
+    if(roleData) {
+        if(previousAdminRole === roleData.adminRole){
             return false;
         }
-        return !!roleData.members[account];
-    }
-
-
-    assertRole(role: string, account: string): void {
-        assert(this.hasRole(role, account), `AccessControl: account ${account} is missing role ${role}`);
-    }
-
-    getRoleAdmin(role: string): string  {
-        const roleData = this.roles.get(role) as RoleData | null;
-        if(roleData){
-            return roleData.adminRole;
+        roleData.adminRole = adminRole;
+    } else {
+        roleData = {
+            adminRole: adminRole,
+            members: {}
         }
-        return AccessControl.DEFAULT_ADMIN_ROLE;
     }
-
-
-    grantRole(role: string, account: string): boolean {
-        this.assertRole(this.getRoleAdmin(role), near.predecessorAccountId())
-        return this.setRole(role, account);
+    contract.roles.set(role, roleData);
+    const roleAdminChangedEventLogData: RoleAdminChangedEventLogData  = {
+        event: "role_admin_changed",
+        data: [{
+            role, previousAdminRole, adminRole
+        }]
     }
+    near.log(`EVENT_JSON:${JSON.stringify(roleAdminChangedEventLogData)}`);
+    return true;
+}
 
-    revokeRole(role: string, account: string): boolean {
-        this.assertRole(this.getRoleAdmin(role), near.predecessorAccountId())
-        return this.deleteRole(role, account);
-    }
-
-   renounceRole(role: string, account: string): boolean{
-        assert(account == near.predecessorAccountId(), "AccessControl: can only renounce roles for self");
-        return this.deleteRole(role, account);
-    }
-
-
-    setRoleAdmin(role: string, adminRole: string): boolean{
-        const previousAdminRole = this.getRoleAdmin(role);
-        let roleData = this.roles.get(role) as RoleData | null;
-        if(roleData) {
-            if(previousAdminRole === roleData.adminRole){
-                return false;
-            }
-            roleData.adminRole = adminRole;
+export function setRole(contract: AccessControl, role: string, account: string): boolean{
+    if (!hasRole(contract, role, account)) {
+        let roleData = contract.roles.get(role) as RoleData | null;
+        if(roleData){
+            roleData.members[account] = true;
         } else {
             roleData = {
-                adminRole: adminRole,
-                members: {}
-            }
-        }
-        this.roles.set(role, roleData);
-        const roleAdminChangedEventLogData: RoleAdminChangedEventLogData  = {
-            event: "role_admin_changed",
-            data: [{
-                role, previousAdminRole, adminRole
-            }]
-        }
-        near.log(`EVENT_JSON:${JSON.stringify(roleAdminChangedEventLogData)}`);
-        return true;
-    }
-
-    setRole(role: string, account: string): boolean{
-        if (!this.hasRole(role, account)) {
-            let roleData = this.roles.get(role) as RoleData | null;
-            if(roleData){
-                roleData.members[account] = true;
-            } else {
-                roleData = {
-                    adminRole: AccessControl.DEFAULT_ADMIN_ROLE,
-                    members: {
-                        [account]: true
-                    }
+                adminRole: contract.DEFAULT_ADMIN_ROLE,
+                members: {
+                    [account]: true
                 }
             }
-            this.roles.set(role, roleData);
-            const roleGrantedEventLogData: RoleGrantedEventLogData  = {
-                event: "role_granted",
+        }
+        contract.roles.set(role, roleData);
+        const roleGrantedEventLogData: RoleGrantedEventLogData  = {
+            event: "role_granted",
+            data: [{
+                role, account, sender: near.predecessorAccountId()
+            }]
+        }
+        near.log(`EVENT_JSON:${JSON.stringify(roleGrantedEventLogData)}`);
+        return true;
+    }
+    return false;
+}
+
+export function deleteRole(contract: AccessControl, role: string, account: string): boolean{
+    if (hasRole(contract, role, account)) {
+        const roleData = contract.roles.get(role) as RoleData | null;
+        if(roleData && roleData.members){
+            delete roleData.members[account];
+            const roleRevokedEventLogData: RoleRevokedEventLogData  = {
+                event: "role_revoked",
                 data: [{
                     role, account, sender: near.predecessorAccountId()
                 }]
             }
-            near.log(`EVENT_JSON:${JSON.stringify(roleGrantedEventLogData)}`);
+            near.log(`EVENT_JSON:${JSON.stringify(roleRevokedEventLogData)}`);
             return true;
         }
-        return false;
     }
-
-    deleteRole(role: string, account: string): boolean{
-        if (this.hasRole(role, account)) {
-            const roleData = this.roles.get(role) as RoleData | null;
-            if(roleData && roleData.members){
-                delete roleData.members[account];
-                const roleRevokedEventLogData: RoleRevokedEventLogData  = {
-                    event: "role_revoked",
-                    data: [{
-                        role, account, sender: near.predecessorAccountId()
-                    }]
-                }
-                near.log(`EVENT_JSON:${JSON.stringify(roleRevokedEventLogData)}`);
-                return true;
-            }
-        }
-        return false
-    }
+    return false
 }

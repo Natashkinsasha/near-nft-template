@@ -1,8 +1,8 @@
 import { assert, near } from "near-sdk-js";
-import { Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME } from ".";
+import {Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from ".";
 import { internalAddTokenToOwner, refundDeposit } from "./internal";
-import {TokenInfo} from "./metadata";
 import {NftMintEventLogData} from "./nep/NEP-171";
+import {current, increment} from "./lib/Counter";
 
 
 export function internalMint({
@@ -17,8 +17,8 @@ export function internalMint({
     //measure the initial storage being used on the contract TODO
     const initialStorageUsage = near.storageUsage();
     for(let i = 0; i < count; i++) {
-        contract.counter.increment();
-        const tokenId = contract.counter.current().toString();
+        increment(contract);
+        const tokenId = current(contract).toString();
         // create a royalty map to store in the token
         let royalty: { [accountId: string]: number } = {}
         const perpetualRoyalties: { [key: string]: number } = {};
@@ -39,8 +39,8 @@ export function internalMint({
             owner_id: receiverId,
             //we set the approved account IDs to the default value (an empty map)
             approved_account_ids: {},
-            //the next approval ID is set to 0
-            next_approval_id: 0,
+            //the next approval ID is set to 1
+            next_approval_id: 1,
             //the map of perpetual royalties for the token (The owner will get 100% - total perpetual royalties)
             royalty,
         };

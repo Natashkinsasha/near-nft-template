@@ -1,7 +1,6 @@
 import { assert, near } from "near-sdk-js";
-import { Contract } from ".";
+import {Contract, TokenInfo} from ".";
 import { assertOneYocto, internalTransfer, refundApprovedAccountIds, royaltyToPayout } from "./internal";
-import {TokenInfo} from "./metadata";
 import {Payout} from "./nep/NEP-199";
 
 
@@ -17,19 +16,19 @@ export function internalNftPayout({
     maxLenPayout: number,
 }): Payout{
     //get the token object
-    let token = contract.tokensById.get(tokenId) as TokenInfo | null;
+    const token = contract.tokensById.get(tokenId) as TokenInfo | null;
     if (!token) {
         throw new Error("no token");
     }
 
     //get the owner of the token
-    let ownerId = token.owner_id;
+    const ownerId = token.owner_id;
     //keep track of the total perpetual royalties
     let totalPerpetual = 0;
     //keep track of the payout object to send back
-    let payoutObj: { [key: string]: string } = {};
+    const payoutObj: { [key: string]: string } = {};
     //get the royalty object from token
-    let royalty = token.royalty;
+    const royalty = token.royalty;
 
     //make sure we're not paying out to too many people (GAS limits this)
     assert(Object.keys(royalty).length <= maxLenPayout, "Market cannot payout to that many receivers");
@@ -69,7 +68,7 @@ export function internalNftTransferPayout({
     memo: string,
     balance: bigint,
     maxLenPayout: number,
-}): { payout: {[key: string]: string }} {
+}): Payout {
     //assert that the user attached 1 yocto NEAR for security reasons
     assertOneYocto();
     //get the sender ID
@@ -91,13 +90,13 @@ export function internalNftTransferPayout({
     );
 
     //get the owner of the token
-    let ownerId = previousToken.owner_id;
+    const ownerId = previousToken.owner_id;
     //keep track of the total perpetual royalties
     let totalPerpetual = 0;
     //keep track of the payout object to send back
-    let payoutObj: { [key: string]: string } = {};
+    const payoutObj: { [key: string]: string } = {};
     //get the royalty object from token
-    let royalty = previousToken.royalty;
+    const royalty = previousToken.royalty;
 
     //make sure we're not paying out to too many people (GAS limits this)
     assert(Object.keys(royalty).length <= maxLenPayout, "Market cannot payout to that many receivers");

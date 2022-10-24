@@ -1,9 +1,7 @@
 import { assert, bytes, near } from "near-sdk-js";
-import { Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME } from "./index";
-import { assertOneYocto, internalAddTokenToOwner, internalRemoveTokenFromOwner, internalTransfer, refundDeposit, refundApprovedAccountIds } from "./internal";
-import { JsonToken, TokenInfo } from "./metadata";
+import {Contract, JsonToken, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from "./index";
+import { assertOneYocto, internalAddTokenToOwner, internalRemoveTokenFromOwner, internalTransfer, refundApprovedAccountIds } from "./internal";
 import {TokenMetadata} from "./nep/NEP-177";
-import {EventLogData} from "./nep/NEP-297";
 import {NftTransferEventLogData} from "./nep/NEP-171";
 
 
@@ -52,7 +50,7 @@ export function internalNftTransfer({
     tokenId: string, 
     approvalId?: number
     memo?: string
-}) {
+}): boolean {
     //assert that the user attached exactly 1 yoctoNEAR. This is for security and so that the user will be redirected to the NEAR wallet.
     assertOneYocto();
     //get the sender to transfer the token from the sender to the receiver
@@ -73,6 +71,8 @@ export function internalNftTransfer({
         previousToken.owner_id,
         previousToken.approved_account_ids
     );
+
+    return true;
 }
 
 //implementation of the transfer call method. This will transfer the NFT and call a method on the receiver_id contract
@@ -90,7 +90,7 @@ export function internalNftTransferCall({
     approvalId?: number,
     memo?: string,
     msg: string  
-}) {
+}): void {
     //assert that the user attached exactly 1 yocto for security reasons.
     assertOneYocto();
     //get the sender to transfer the token from the sender to the receiver

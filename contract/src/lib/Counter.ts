@@ -1,24 +1,24 @@
 
 
-export class Counter{
-    private value: number = 0;
+export interface Counter{
+   counter: number;
+}
 
-    current(): number {
-        return this.value;
-    }
+export function current(contract: Counter): number {
+    return contract.counter;
+}
 
-    increment(): void {
-        this.value += 1;
-    }
+export function increment(contract: Counter): void {
+    contract.counter += 1;
+}
 
-    decrement(): void {
-        if(this.value > 0){
-            this.value -= 1;
-        }
-        throw new Error('Counter: decrement overflow');
+export function decrement(contract: Counter): void {
+    if(contract.counter > 0){
+        contract.counter -= 1;
     }
+    throw new Error('Counter: decrement overflow');
+}
 
-    reset(): void {
-        this.value = 0;
-    }
+export function reset(contract: Counter): void {
+    contract.counter = 0;
 }

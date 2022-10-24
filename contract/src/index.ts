@@ -1,18 +1,18 @@
 
-import {NearBindgen, near, call, view, LookupMap, UnorderedMap, Vector, UnorderedSet, initialize} from 'near-sdk-js'
-import {internalNftMetadata, JsonToken} from './metadata';
+import {NearBindgen, near, call, view, LookupMap, UnorderedMap, initialize} from 'near-sdk-js'
+import {internalNftMetadata} from './metadata';
 import { internalMint } from './mint';
 import { internalNftTokens, internalSupplyForOwner, internalTokensForOwner, internalTotalSupply } from './enumeration';
 import { internalNftToken, internalNftTransfer, internalNftTransferCall, internalResolveTransfer } from './nft_core';
 import { internalNftApprove, internalNftIsApproved, internalNftRevoke, internalNftRevokeAll } from './approval';
 import { internalNftPayout, internalNftTransferPayout } from './royalty';
-import {NEP171} from "./nep/NEP-171";
-import {NEP177, NFTContractMetadata} from "./nep/NEP-177";
+import {NEP171, Token} from "./nep/NEP-171";
+import {NEP177, NFTContractMetadata, TokenMetadata} from "./nep/NEP-177";
 import {NEP178} from "./nep/NEP-178";
 import {NEP199} from "./nep/NEP-199";
 import {NEP181} from "./nep/NEP-181";
 import {Counter} from "./lib/Counter";
-import {AccessControl} from "./lib/AccessControl";
+import {AccessControl, assertRole, grantRole, renounceRole, revokeRole, setRole} from "./lib/AccessControl";
 
 /// This spec can be treated like a version of the standard.
 export const NFT_METADATA_SPEC = "nft-1.0.0";
@@ -20,11 +20,26 @@ export const NFT_METADATA_SPEC = "nft-1.0.0";
 /// This is the name of the NFT standard we're using
 export const NFT_STANDARD_NAME = "nep171";
 
+export type TokenInfo = {
+    owner_id: string;
+    approved_account_ids: { [accountId: string]: number };
+    next_approval_id: number;
+    royalty: { [accountId: string]: number };
+}
 
-@NearBindgen({})
-export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
+export type JsonToken = Token & {
+    metadata: TokenMetadata;
+    approved_account_ids: { [accountId: string]: number };
+    royalty: { [accountId: string]: number };
+}
 
-    static MINTER_ROLE = "MINTER_ROLE";
+@NearBindgen({requireInit: true})
+export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199, AccessControl, Counter{
+
+    DEFAULT_ADMIN_ROLE: "DEFAULT_ADMIN_ROLE";
+    MINTER_ROLE = "MINTER_ROLE";
+    counter: number = 0;
+    roles: LookupMap = new LookupMap("roles");
 
     tokensPerOwner: LookupMap = new LookupMap("tokensPerOwner");
     tokensById: LookupMap = new LookupMap("tokensById");
@@ -34,19 +49,18 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
         name: "NFT Tutorial Contract",
         symbol: "GOTEAM"
     } ;
-    counter: Counter = new Counter();
-    accessController = new AccessControl();
 
-    // constructor() {
-    //     this.accessController.setRole(AccessControl.DEFAULT_ADMIN_ROLE, near.currentAccountId());
-    //     this.accessController.setRole(Contract.MINTER_ROLE, near.currentAccountId());
-    // }
 
+    @initialize({})
+    init(){
+        setRole(this, this.DEFAULT_ADMIN_ROLE, near.predecessorAccountId());
+        setRole(this, this.MINTER_ROLE, near.predecessorAccountId());
+    }
 
 
     @call({payableFunction: true})
     airdrop({ receiver_id, count }: {receiver_id?: string, count: number}): void {
-        this.accessController.assertRole(Contract.MINTER_ROLE, near.predecessorAccountId());
+        assertRole(this, this.MINTER_ROLE, near.predecessorAccountId());
         return internalMint({ contract: this, count, receiverId: receiver_id ?? near.predecessorAccountId() });
     }
 
@@ -55,8 +69,8 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
         return internalNftToken({ contract: this, tokenId: token_id });
     }
 
-    @call({})
-    nft_transfer({ receiver_id, token_id, approval_id, memo }: { receiver_id: string, token_id: string, approval_id?: number, memo?: string}): void {
+    @call({payableFunction: true})
+    nft_transfer({ receiver_id, token_id, approval_id, memo }: { receiver_id: string, token_id: string, approval_id?: number, memo?: string}): boolean {
         return internalNftTransfer({ contract: this, receiverId: receiver_id, tokenId: token_id, approvalId: approval_id, memo: memo });
     }
 
@@ -65,7 +79,7 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
         return internalNftTransferCall({ contract: this, receiverId: receiver_id, tokenId: token_id, approvalId: approval_id, memo: memo, msg: msg });
     }
 
-    @call({})
+    @call({privateFunction: true})
     nft_resolve_transfer({ authorized_id, owner_id, receiver_id, token_id, approved_account_ids, memo }): boolean {
         return internalResolveTransfer({ contract: this, authorizedId: authorized_id, ownerId: owner_id, receiverId: receiver_id, tokenId: token_id, approvedAccountIds: approved_account_ids, memo: memo });
     }
@@ -75,9 +89,9 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
         return internalNftIsApproved({ contract: this, tokenId: token_id, approvedAccountId: approved_account_id, approvalId: approval_id });
     }
 
-    @call({})
-    nft_approve({ token_id, account_id, msg }: {token_id: string, account_id: string, msg: string}) {
-        return internalNftApprove({ contract: this, tokenId: token_id, accountId: account_id, msg: msg });
+    @call({payableFunction: true})
+    nft_approve({ token_id, account_id, msg }: {token_id: string, account_id: string, msg?: string}): void {
+        return internalNftApprove({ contract: this, tokenId: token_id, accountId: account_id, msg });
     }
 
     @view({})
@@ -90,12 +104,12 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
         return internalNftTransferPayout({ contract: this, receiverId: receiver_id, tokenId: token_id, approvalId: approval_id, memo: memo, balance: balance, maxLenPayout: max_len_payout });
     }
 
-    @call({})
+    @call({payableFunction: true})
     nft_revoke({ token_id, account_id }: {token_id: string, account_id: string}) {
         return internalNftRevoke({ contract: this, tokenId: token_id, accountId: account_id });
     }
 
-    @call({})
+    @call({payableFunction: true})
     nft_revoke_all({ token_id }:{token_id: string}) {
         return internalNftRevokeAll({ contract: this, tokenId: token_id });
     }
@@ -106,12 +120,12 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
     }
 
     @view({})
-    nft_tokens({ from_index, limit }: { from_index: string, limit: number }) {
+    nft_tokens({ from_index, limit }: { from_index?: string, limit?: number }): JsonToken[] {
         return internalNftTokens({ contract: this, fromIndex: from_index, limit: limit });
     }
 
     @view({})
-    nft_tokens_for_owner({ account_id, from_index, limit }: { account_id: string, from_index: string, limit: number}) {
+    nft_tokens_for_owner({ account_id, from_index, limit }: { account_id: string, from_index?: string, limit?: number}): JsonToken[] {
         return internalTokensForOwner({ contract: this, accountId: account_id, fromIndex: from_index, limit: limit });
     }
 
@@ -125,4 +139,20 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199{
     nft_metadata(): NFTContractMetadata {
         return internalNftMetadata({ contract: this });
     }
+
+    @call({})
+    grant_role(role: string, account: string): boolean {
+        return grantRole(this, role, account);
+    }
+
+    @call({})
+    revoke_role(role: string, account: string): boolean {
+        return revokeRole(this, role, account);
+    }
+
+    @call({})
+    renounce_role(role: string, account: string): boolean {
+        return renounceRole(this, role, account);
+    }
+
 }

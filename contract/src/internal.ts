@@ -1,15 +1,13 @@
-import { assert, near, UnorderedSet, Vector } from "near-sdk-js";
-import { Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME } from ".";
-import { TokenInfo } from "./metadata";
-import {EventLogData} from "./nep/NEP-297";
+import { assert, near, UnorderedSet } from "near-sdk-js";
+import {Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from ".";
 import {NftTransferEventLogData} from "./nep/NEP-171";
 
 // Gets a collection and deserializes it into a set that can be used.
-export function restoreOwners(collection) {
+export function restoreOwners(collection: UnorderedSet | null): UnorderedSet | null {
     if (!collection) {
         return null;
     }
-    return UnorderedSet.deserialize(collection as UnorderedSet);
+    return UnorderedSet.deserialize(collection);
 }
 
 //convert the royalty percentage and amount to pay into a payout (U128)
@@ -20,8 +18,8 @@ export function royaltyToPayout(royaltyPercentage: number, amountToPay: bigint):
 //refund the storage taken up by passed in approved account IDs and send the funds to the passed in account ID. 
 export function refundApprovedAccountIdsIter(accountId: string, approvedAccountIds: string[]) {
     //get the storage total by going through and summing all the bytes for each approved account IDs
-    let storageReleased = approvedAccountIds.map(e => bytesForApprovedAccountId(e)).reduce((partialSum, a) => partialSum + a, 0);
-    let amountToTransfer = BigInt(storageReleased) * near.storageByteCost().valueOf();
+    const storageReleased = approvedAccountIds.map(e => bytesForApprovedAccountId(e)).reduce((partialSum, a) => partialSum + a, 0);
+    const amountToTransfer = BigInt(storageReleased) * near.storageByteCost().valueOf();
     
     // Send the money to the beneficiary (TODO: don't use batch actions)
     const promise = near.promiseBatchCreate(accountId);
@@ -78,7 +76,7 @@ export function assertOneYocto() {
 //add a token to the set of tokens an owner has
 export function internalAddTokenToOwner(contract: Contract, accountId: string, tokenId: string) {
     //get the set of tokens for the given account
-    let tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId));
+    let tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId) as UnorderedSet | null);
 
     if(!tokenSet) {
         //if the account doesn't have any tokens, we create a new unordered set
@@ -95,7 +93,7 @@ export function internalAddTokenToOwner(contract: Contract, accountId: string, t
 //remove a token from an owner (internal method and can't be called directly via CLI).
 export function internalRemoveTokenFromOwner(contract: Contract, accountId: string, tokenId: string) {
     //we get the set of tokens that the owner has
-    let tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId));
+    const tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId) as UnorderedSet | null);
     //if there is no set of tokens for the owner, we panic with the following message:
     if (!tokenSet) {
         throw new Error("Token should be owned by the sender");
