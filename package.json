@@ -6,7 +6,7 @@
     "deploy": "cd contract && npm run deploy",
     "build": "cd contract && npm run build",
     "test": "npm run build && npm run test:integration",
-    "test:integration": "cd integration-tests && npm test -- -- \"./contract/build/contract.wasm\"",
+    "test:integration": "cd integration-tests && npm test -- -- \"./contract/build/nft.wasm\" \"./contract/build/market.wasm\"",
     "postinstall": "cd integration-tests && npm install && cd .. && cd contract && npm install"
   },
   "devDependencies": {

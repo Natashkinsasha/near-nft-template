@@ -1,8 +1,8 @@
 import { assert, near } from "near-sdk-js";
-import {Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from ".";
+import {Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from "./index";
 import { internalAddTokenToOwner, refundDeposit } from "./internal";
-import {NftMintEventLogData} from "./nep/NEP-171";
-import {current, increment} from "./lib/Counter";
+import {NftMintEventLogData} from "../nep/NEP-171";
+import {current, increment} from "../lib/Counter";
 
 
 export function internalMint({

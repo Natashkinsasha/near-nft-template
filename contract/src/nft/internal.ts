@@ -1,6 +1,6 @@
 import { assert, near, UnorderedSet } from "near-sdk-js";
-import {Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from ".";
-import {NftTransferEventLogData} from "./nep/NEP-171";
+import {Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from "./index";
+import {NftTransferEventLogData} from "../nep/NEP-171";
 
 // Gets a collection and deserializes it into a set that can be used.
 export function restoreOwners(collection: UnorderedSet | null): UnorderedSet | null {

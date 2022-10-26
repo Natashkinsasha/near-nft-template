@@ -1,5 +1,5 @@
-import { Contract } from ".";
-import {NFTContractMetadata} from "./nep/NEP-177";
+import { Contract } from "./index";
+import {NFTContractMetadata} from "../nep/NEP-177";
 
 
 

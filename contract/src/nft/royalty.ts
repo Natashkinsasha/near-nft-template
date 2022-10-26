@@ -1,7 +1,7 @@
 import { assert, near } from "near-sdk-js";
-import {Contract, TokenInfo} from ".";
+import {Contract, TokenInfo} from "./index";
 import { assertOneYocto, internalTransfer, refundApprovedAccountIds, royaltyToPayout } from "./internal";
-import {Payout} from "./nep/NEP-199";
+import {Payout} from "../nep/NEP-199";
 
 
 export function internalNftPayout({

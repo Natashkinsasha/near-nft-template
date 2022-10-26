@@ -1,11 +1,13 @@
 import {assert, LookupMap, near} from "near-sdk-js";
 import {EventLogData} from "../nep/NEP-297";
 
-export type RoleAdminChangedEventLogData = EventLogData<"role_admin_changed",{role, previousAdminRole, adminRole}[]>;
+export const DEFAULT_ADMIN_ROLE = "DEFAULT_ADMIN_ROLE";
 
-export type RoleGrantedEventLogData = EventLogData<"role_granted",{role, account, sender}[]>
+export type RoleAdminChangedEventLogData = EventLogData<"role_admin_changed",{role: string, previousAdminRole: string, adminRole: string}[]>;
 
-export type RoleRevokedEventLogData = EventLogData<"role_revoked",{role, account, sender}[]>
+export type RoleGrantedEventLogData = EventLogData<"role_granted",{role: string, account: string, sender: string}[]>
+
+export type RoleRevokedEventLogData = EventLogData<"role_revoked",{role: string, account: string, sender: string}[]>
 
 export type RoleData  = {
     members: {[key: string]: boolean | undefined};
@@ -16,7 +18,6 @@ export interface AccessControl {
 
     roles: LookupMap;
 
-    DEFAULT_ADMIN_ROLE: 'DEFAULT_ADMIN_ROLE';
 }
 
 export function hasRole(contract: AccessControl, role: string, account: string): boolean {
@@ -37,7 +38,7 @@ export function getRoleAdmin(contract: AccessControl, role: string): string  {
     if(roleData){
         return roleData.adminRole;
     }
-    return contract.DEFAULT_ADMIN_ROLE;
+    return DEFAULT_ADMIN_ROLE;
 }
 
 
@@ -89,7 +90,7 @@ export function setRole(contract: AccessControl, role: string, account: string):
             roleData.members[account] = true;
         } else {
             roleData = {
-                adminRole: contract.DEFAULT_ADMIN_ROLE,
+                adminRole: DEFAULT_ADMIN_ROLE,
                 members: {
                     [account]: true
                 }

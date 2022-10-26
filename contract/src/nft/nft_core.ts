@@ -1,8 +1,8 @@
 import { assert, bytes, near } from "near-sdk-js";
 import {Contract, JsonToken, NFT_METADATA_SPEC, NFT_STANDARD_NAME, TokenInfo} from "./index";
 import { assertOneYocto, internalAddTokenToOwner, internalRemoveTokenFromOwner, internalTransfer, refundApprovedAccountIds } from "./internal";
-import {TokenMetadata} from "./nep/NEP-177";
-import {NftTransferEventLogData} from "./nep/NEP-171";
+import {TokenMetadata} from "../nep/NEP-177";
+import {NftTransferEventLogData} from "../nep/NEP-171";
 
 
 const GAS_FOR_RESOLVE_TRANSFER = 40_000_000_000_000;

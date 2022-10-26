@@ -1,4 +1,4 @@
-import {Contract, JsonToken} from ".";
+import {Contract, JsonToken} from "./index";
 import { restoreOwners } from "./internal";
 import { internalNftToken } from "./nft_core";
 import {near, UnorderedSet} from "near-sdk-js";

@@ -1,24 +1,36 @@
 
-import {NearBindgen, near, call, view, LookupMap, UnorderedMap, initialize} from 'near-sdk-js'
+import {NearBindgen, near, call, view, LookupMap, UnorderedMap, initialize, LookupSet} from 'near-sdk-js'
 import {internalNftMetadata} from './metadata';
-import { internalMint } from './mint';
-import { internalNftTokens, internalSupplyForOwner, internalTokensForOwner, internalTotalSupply } from './enumeration';
-import { internalNftToken, internalNftTransfer, internalNftTransferCall, internalResolveTransfer } from './nft_core';
-import { internalNftApprove, internalNftIsApproved, internalNftRevoke, internalNftRevokeAll } from './approval';
-import { internalNftPayout, internalNftTransferPayout } from './royalty';
-import {NEP171, Token} from "./nep/NEP-171";
-import {NEP177, NFTContractMetadata, TokenMetadata} from "./nep/NEP-177";
-import {NEP178} from "./nep/NEP-178";
-import {NEP199} from "./nep/NEP-199";
-import {NEP181} from "./nep/NEP-181";
-import {Counter} from "./lib/Counter";
-import {AccessControl, assertRole, grantRole, renounceRole, revokeRole, setRole} from "./lib/AccessControl";
+import {internalMint} from './mint';
+import {internalNftTokens, internalSupplyForOwner, internalTokensForOwner, internalTotalSupply} from './enumeration';
+import {internalNftToken, internalNftTransfer, internalNftTransferCall, internalResolveTransfer} from './nft_core';
+import {internalNftApprove, internalNftIsApproved, internalNftRevoke, internalNftRevokeAll} from './approval';
+import {internalNftPayout, internalNftTransferPayout} from './royalty';
+import {NEP171, Token} from "../nep/NEP-171";
+import {NEP177, NFTContractMetadata, TokenMetadata} from "../nep/NEP-177";
+import {NEP178} from "../nep/NEP-178";
+import {NEP199} from "../nep/NEP-199";
+import {NEP181} from "../nep/NEP-181";
+import {Counter} from "../lib/Counter";
+import {
+    AccessControl,
+    assertRole,
+    DEFAULT_ADMIN_ROLE,
+    grantRole,
+    renounceRole,
+    revokeRole,
+    setRole
+} from "../lib/AccessControl";
+import {assertIsNotPaused, Pausable, _pause, _unpause} from "../lib/Pausable";
 
 /// This spec can be treated like a version of the standard.
 export const NFT_METADATA_SPEC = "nft-1.0.0";
 
 /// This is the name of the NFT standard we're using
 export const NFT_STANDARD_NAME = "nep171";
+
+export const MINTER_ROLE = "MINTER_ROLE";
+export const TRANSFER_TOKEN_PAUSE = "TRANSFER_TOKEN_PAUSE";
 
 export type TokenInfo = {
     owner_id: string;
@@ -34,33 +46,32 @@ export type JsonToken = Token & {
 }
 
 @NearBindgen({requireInit: true})
-export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199, AccessControl, Counter{
+export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199, AccessControl, Counter, Pausable {
 
-    DEFAULT_ADMIN_ROLE: "DEFAULT_ADMIN_ROLE";
-    MINTER_ROLE = "MINTER_ROLE";
     counter: number = 0;
+    pauses: LookupSet = new LookupSet('pauses');
     roles: LookupMap = new LookupMap("roles");
 
     tokensPerOwner: LookupMap = new LookupMap("tokensPerOwner");
     tokensById: LookupMap = new LookupMap("tokensById");
     tokenMetadataById: UnorderedMap = new UnorderedMap("tokenMetadataById");
     metadata: NFTContractMetadata = {
-        spec: "nft-1.0.0",
+        spec: NFT_METADATA_SPEC,
         name: "NFT Tutorial Contract",
         symbol: "GOTEAM"
-    } ;
+    };
 
 
     @initialize({})
-    init(){
-        setRole(this, this.DEFAULT_ADMIN_ROLE, near.predecessorAccountId());
-        setRole(this, this.MINTER_ROLE, near.predecessorAccountId());
+    init({admin}:{admin?: string}){
+        setRole(this, DEFAULT_ADMIN_ROLE, admin ?? near.predecessorAccountId());
+        setRole(this, MINTER_ROLE, admin ?? near.predecessorAccountId());
     }
 
 
     @call({payableFunction: true})
     airdrop({ receiver_id, count }: {receiver_id?: string, count: number}): void {
-        assertRole(this, this.MINTER_ROLE, near.predecessorAccountId());
+        assertRole(this, MINTER_ROLE, near.predecessorAccountId());
         return internalMint({ contract: this, count, receiverId: receiver_id ?? near.predecessorAccountId() });
     }
 
@@ -71,11 +82,13 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199, AccessC
 
     @call({payableFunction: true})
     nft_transfer({ receiver_id, token_id, approval_id, memo }: { receiver_id: string, token_id: string, approval_id?: number, memo?: string}): boolean {
+        assertIsNotPaused(this, TRANSFER_TOKEN_PAUSE);
         return internalNftTransfer({ contract: this, receiverId: receiver_id, tokenId: token_id, approvalId: approval_id, memo: memo });
     }
 
     @call({})
     nft_transfer_call({ receiver_id, token_id, approval_id, memo, msg }: { receiver_id: string, token_id: string, approval_id?: number, memo?: string, msg: string}): void {
+        assertIsNotPaused(this, TRANSFER_TOKEN_PAUSE);
         return internalNftTransferCall({ contract: this, receiverId: receiver_id, tokenId: token_id, approvalId: approval_id, memo: memo, msg: msg });
     }
 
@@ -91,6 +104,7 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199, AccessC
 
     @call({payableFunction: true})
     nft_approve({ token_id, account_id, msg }: {token_id: string, account_id: string, msg?: string}): void {
+        assertIsNotPaused(this, TRANSFER_TOKEN_PAUSE);
         return internalNftApprove({ contract: this, tokenId: token_id, accountId: account_id, msg });
     }
 
@@ -101,6 +115,7 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199, AccessC
 
     @call({payableFunction: true})
     nft_transfer_payout({ receiver_id, token_id, approval_id, memo, balance, max_len_payout }: {receiver_id: string, token_id: string, approval_id?: number, memo: string, balance: bigint, max_len_payout: number}) {
+        assertIsNotPaused(this, TRANSFER_TOKEN_PAUSE);
         return internalNftTransferPayout({ contract: this, receiverId: receiver_id, tokenId: token_id, approvalId: approval_id, memo: memo, balance: balance, maxLenPayout: max_len_payout });
     }
 
@@ -153,6 +168,18 @@ export class Contract implements NEP171, NEP177, NEP178, NEP181, NEP199, AccessC
     @call({})
     renounce_role(role: string, account: string): boolean {
         return renounceRole(this, role, account);
+    }
+
+    @call({})
+    pause({pauseId}:{pauseId: string}): void{
+        assertRole(this, DEFAULT_ADMIN_ROLE, near.predecessorAccountId());
+        return _pause(this, pauseId)
+    }
+
+    @call({})
+    unpause({pauseId}:{pauseId: string}): void{
+        assertRole(this, DEFAULT_ADMIN_ROLE, near.predecessorAccountId());
+        return _unpause(this, pauseId)
     }
 
 }

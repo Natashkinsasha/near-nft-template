@@ -1,6 +1,6 @@
-import { Worker, NEAR, NearAccount } from 'near-workspaces';
+import {Worker, NEAR, NearAccount, TransactionError} from 'near-workspaces';
 import anyTest, { TestFn } from 'ava';
-import {JsonToken} from '../../contract/src/index';
+import {JsonToken} from '../../contract/src/nft';
 
 const test = anyTest as TestFn<{
   worker: Worker;
@@ -187,4 +187,14 @@ test("should revoke all approves", async (t) => {
     royalty: {},
     token_id: '1',
   });
+});
+
+test("should pause nft_transfer function", async (t)=>{
+  const { contract, alice } = t.context.accounts;
+  const count = 10;
+  await contract.call(contract, 'pause', {pauseId: 'TRANSFER_TOKEN_PAUSE'});
+  await contract.call(contract, 'airdrop', {count}, {attachedDeposit: NEAR.parse('1 NEAR')});
+  await t.throwsAsync(contract.call(contract, 'nft_transfer', {receiver_id: alice.accountId,  token_id: "4"}, {attachedDeposit: NEAR.parse('1 yoctoNEAR')}))
+  await contract.call(contract, 'unpause', {pauseId: 'TRANSFER_TOKEN_PAUSE'});
+  contract.call(contract, 'nft_transfer', {receiver_id: alice.accountId,  token_id: "4"}, {attachedDeposit: NEAR.parse('1 yoctoNEAR')});
 });

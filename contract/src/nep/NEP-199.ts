@@ -1,5 +1,5 @@
 import {call, view} from "near-sdk-js";
-import {internalNftPayout, internalNftTransferPayout} from "../royalty";
+import {internalNftPayout, internalNftTransferPayout} from "../nft/royalty";
 
 export type Payout = {
     payout: { [accountId: string]: string };
