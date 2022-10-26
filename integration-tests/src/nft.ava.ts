@@ -1,4 +1,4 @@
-import {Worker, NEAR, NearAccount, TransactionError} from 'near-workspaces';
+import {Worker, NEAR, NearAccount} from 'near-workspaces';
 import anyTest, { TestFn } from 'ava';
 import {JsonToken} from '../../contract/src/nft';
 
